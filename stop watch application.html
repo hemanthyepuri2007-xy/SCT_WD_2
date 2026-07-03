@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stopwatch Pro - Precision Timer</title>
+  <!-- Tailwind CSS CDN for modern styling layout -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    /* Premium styling and smooth Transitions */
+    body {
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+    }
+
+    .dark .glass-panel {
+      background: rgba(17, 24, 39, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    /* Custom scrollbars for clean lists */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.3);
+      border-radius: 9999px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(75, 85, 99, 0.5);
+    }
+    
+    /* Subtle pulsing glowing ring for active state */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.5; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      100% { transform: scale(0.95); opacity: 0.5; }
+    }
+    .pulse-glow {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col justify-between font-sans overflow-x-hidden antialiased">
+
+  <!-- Header & Toolbar -->
+  <header class="w-full max-w-6xl mx-auto px-4 py-4 flex justify-between items-center z-10">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+        <i data-lucide="timer" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-slate-900 to-indigo-700 dark:from-white dark:to-indigo-300 bg-clip-text text-transparent">Stopwatch Pro</h1>
+        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Precision Timing Engine</span>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-2">
+      <!-- Mute/Sound Toggle -->
+      <button id="soundToggle" class="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm" title="Toggle Sound Feedback">
+        <i id="soundIcon" data-lucide="volume-2" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Theme Toggle -->
+      <button id="themeToggle" class="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm" title="Toggle Theme">
+        <i id="themeIcon" data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+        <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-grow flex items-center justify-center p-4">
+    <div class="w-full max-w-lg glass-panel rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+      <!-- Glow Decorator behind timer -->
+      <div id="activeIndicator" class="absolute -top-10 left-1/2 -translate-x-1/2 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl opacity-0 transition-opacity duration-500 pointer-events-none"></div>
+
+      <!-- TIMER DISPLAY -->
+      <div class="flex flex-col items-center justify-center py-6 relative z-10">
+        <!-- Display Header Info -->
+        <div class="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 rounded-full text-xs font-semibold tracking-wider uppercase mb-6">
+          <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-ping mr-0.5" id="liveIndicator"></span>
+          <span id="statusLabel">Ready</span>
+        </div>
+
+        <!-- Main Digits -->
+        <div id="timeDisplay" class="font-mono text-5xl sm:text-6xl font-extrabold tracking-tight tabular-nums flex items-center justify-center select-all cursor-pointer select-none" title="Double click to copy time">
+          <span id="hours" class="text-slate-400 dark:text-slate-500">00</span>
+          <span class="text-indigo-500 mx-1">:</span>
+          <span id="minutes">00</span>
+          <span class="text-indigo-500 mx-1">:</span>
+          <span id="seconds">00</span>
+          <span class="text-indigo-500 mx-1">.</span>
+          <span id="milliseconds" class="text-3xl sm:text-4xl text-indigo-600 dark:text-indigo-400 font-bold w-[3.5rem] text-left">000</span>
+        </div>
+      </div>
+
+      <!-- INTERACTION BUTTONS -->
+      <div class="grid grid-cols-3 gap-3 my-6 relative z-10">
+        <!-- Left Action Button: LAP -->
+        <button id="lapBtn" disabled class="flex flex-col items-center justify-center py-3 px-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-all disabled:opacity-45 disabled:cursor-not-allowed group">
+          <i data-lucide="flag" class="w-5 h-5 mb-1 group-hover:scale-110 transition-transform"></i>
+          <span class="text-xs font-bold tracking-wide uppercase">Lap</span>
+          <span class="text-[9px] text-slate-400 hidden sm:inline">[L]</span>
+        </button>
+
+        <!-- Center Master Action Button: PLAY / PAUSE / RESUME -->
+        <button id="startPauseBtn" class="flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95 group">
+          <i id="playPauseIcon" data-lucide="play" class="w-6 h-6 mb-1 fill-white group-hover:scale-110 transition-transform"></i>
+          <span id="playPauseText" class="text-xs font-bold tracking-wide uppercase">Start</span>
+          <span class="text-[9px] text-indigo-300 hidden sm:inline">[Space]</span>
+        </button>
+
+        <!-- Right Action Button: RESET -->
+        <button id="resetBtn" class="flex flex-col items-center justify-center py-3 px-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-200 dark:hover:border-rose-900/50 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 transition-all disabled:opacity-45 disabled:cursor-not-allowed group">
+          <i data-lucide="rotate-ccw" class="w-5 h-5 mb-1 group-hover:rotate-45 transition-transform"></i>
+          <span class="text-xs font-bold tracking-wide uppercase">Reset</span>
+          <span class="text-[9px] text-slate-400 hidden sm:inline">[R]</span>
+        </button>
+      </div>
+
+      <!-- LAPS HISTORY SECTION -->
+      <div class="mt-6 border-t border-slate-200/50 dark:border-slate-800/50 pt-5 relative z-10">
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center gap-2">
+            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Laps History</h3>
+            <span id="lapCount" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">0</span>
+          </div>
+          
+          <!-- Actions on Laps -->
+          <div class="flex items-center gap-2">
+            <button id="exportBtn" disabled class="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all disabled:opacity-30 disabled:pointer-events-none" title="Export Laps to CSV">
+              <i data-lucide="download" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="lapsEmptyState" class="py-10 text-center flex flex-col items-center justify-center">
+          <div class="w-12 h-12 rounded-full border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-600 mb-3">
+            <i data-lucide="history" class="w-5 h-5"></i>
+          </div>
+          <p class="text-xs font-medium text-slate-400 dark:text-slate-500">No laps recorded yet</p>
+          <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Press <kbd class="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">L</kbd> or click Lap while active</p>
+        </div>
+
+        <!-- Scrollable Laps Container -->
+        <div id="lapsContainer" class="max-h-[220px] overflow-y-auto custom-scrollbar hidden space-y-2 pr-1">
+          <!-- Lap Card Template will dynamically mount here -->
+        </div>
+
+        <!-- Lap Analysis Bar (Fastest / Slowest Highlights) -->
+        <div id="lapAnalysis" class="mt-4 hidden p-3 rounded-xl bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50 text-xs flex flex-col gap-1.5">
+          <div class="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
+            <span class="flex items-center gap-1 font-semibold"><i data-lucide="trending-down" class="w-3.5 h-3.5"></i> Fastest Lap:</span>
+            <span id="fastestLapText" class="font-mono font-bold">--</span>
+          </div>
+          <div class="flex justify-between items-center text-rose-600 dark:text-rose-400">
+            <span class="flex items-center gap-1 font-semibold"><i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Slowest Lap:</span>
+            <span id="slowestLapText" class="font-mono font-bold">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Keyboard Shortcuts & Toast Feedback Helper -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-lg shadow-slate-900/30 flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50">
+    <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i>
+    <span id="toastMsg">Time copied to clipboard!</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="w-full text-center py-4 text-xs text-slate-400 dark:text-slate-600 font-medium">
+    <div class="max-w-xs mx-auto flex items-center justify-center gap-3">
+      <span>Stopwatch Engine v2.0</span>
+      <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-800"></span>
+      <button id="showKeysBtn" class="hover:text-indigo-500 transition-colors">Keyboard Shortcuts</button>
+    </div>
+  </footer>
+
+  <!-- Shortcuts Modal dialog -->
+  <div id="shortcutsModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 max-w-sm w-full rounded-2xl p-6 shadow-2xl scale-95 transition-all">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <i data-lucide="keyboard" class="w-5 h-5 text-indigo-500"></i>
+          Keyboard Shortcuts
+        </h3>
+        <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800/50">
+          <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Start / Pause</span>
+          <kbd class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold shadow-sm">Space</kbd>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800/50">
+          <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Record Lap</span>
+          <kbd class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold shadow-sm">L</kbd>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800/50">
+          <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Reset Timer</span>
+          <kbd class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold shadow-sm">R</kbd>
+        </div>
+        <div class="flex justify-between items-center py-1.5">
+          <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Start (Alternate)</span>
+          <kbd class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold shadow-sm">Enter</kbd>
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-4 text-center">Press shortcuts anytime when the page is active.</p>
+    </div>
+  </div>
+
+  <!-- Vanilla Javascript App Controller -->
+  <script>
+    // STOPWATCH STATE MANAGEMENT
+    const state = {
+      startTime: 0,
+      elapsedTime: 0,
+      pausedTime: 0,
+      isRunning: false,
+      laps: [],
+      soundEnabled: true,
+      lastTickTime: 0
+    };
+
+    // SOUND ENGINE USING WEB AUDIO API (Prevents dependencies on external assets)
+    const SoundEngine = {
+      ctx: null,
+      
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      },
+      
+      play(type) {
+        if (!state.soundEnabled) return;
+        this.init();
+        
+        // Resume AudioContext if suspended (browser security policy)
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        const now = this.ctx.currentTime;
+        
+        if (type === 'start') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        } else if (type === 'pause') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(500, now);
+          osc.frequency.exponentialRampToValueAtTime(300, now + 0.15);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'lap') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.setValueAtTime(1100, now + 0.05);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'reset') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(350, now);
+          osc.frequency.exponentialRampToValueAtTime(150, now + 0.25);
+          gain.gain.setValueAtTime(0.05, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        }
+      }
+    };
+
+    // DOM ELEMENTS
+    const dom = {
+      hours: document.getElementById('hours'),
+      minutes: document.getElementById('minutes'),
+      seconds: document.getElementById('seconds'),
+      milliseconds: document.getElementById('milliseconds'),
+      startPauseBtn: document.getElementById('startPauseBtn'),
+      playPauseIcon: document.getElementById('playPauseIcon'),
+      playPauseText: document.getElementById('playPauseText'),
+      lapBtn: document.getElementById('lapBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      statusLabel: document.getElementById('statusLabel'),
+      liveIndicator: document.getElementById('liveIndicator'),
+      activeIndicator: document.getElementById('activeIndicator'),
+      lapsEmptyState: document.getElementById('lapsEmptyState'),
+      lapsContainer: document.getElementById('lapsContainer'),
+      lapCount: document.getElementById('lapCount'),
+      exportBtn: document.getElementById('exportBtn'),
+      lapAnalysis: document.getElementById('lapAnalysis'),
+      fastestLapText: document.getElementById('fastestLapText'),
+      slowestLapText: document.getElementById('slowestLapText'),
+      themeToggle: document.getElementById('themeToggle'),
+      soundToggle: document.getElementById('soundToggle'),
+      soundIcon: document.getElementById('soundIcon'),
+      timeDisplay: document.getElementById('timeDisplay'),
+      toast: document.getElementById('toast'),
+      toastMsg: document.getElementById('toastMsg'),
+      showKeysBtn: document.getElementById('showKeysBtn'),
+      closeModalBtn: document.getElementById('closeModalBtn'),
+      shortcutsModal: document.getElementById('shortcutsModal')
+    };
+
+    // TIME FORMATTING HELPER
+    function formatTime(totalMs) {
+      const hrs = Math.floor(totalMs / 3600000);
+      const mins = Math.floor((totalMs % 3600000) / 60000);
+      const secs = Math.floor((totalMs % 60000) / 1000);
+      const ms = totalMs % 1000;
+
+      return {
+        hours: String(hrs).padStart(2, '0'),
+        minutes: String(mins).padStart(2, '0'),
+        seconds: String(secs).padStart(2, '0'),
+        milliseconds: String(ms).padStart(3, '0')
+      };
+    }
+
+    // UPDATE DISPLAY VALUES
+    function updateDisplay(totalMs) {
+      const time = formatTime(totalMs);
+      dom.hours.innerText = time.hours;
+      dom.minutes.innerText = time.minutes;
+      dom.seconds.innerText = time.seconds;
+      dom.milliseconds.innerText = time.milliseconds;
+
+      // Handle dimming the hours if zero to improve readability
+      if (time.hours === '00') {
+        dom.hours.classList.add('text-slate-300', 'dark:text-slate-600');
+        dom.hours.classList.remove('text-slate-800', 'dark:text-white');
+      } else {
+        dom.hours.classList.remove('text-slate-300', 'dark:text-slate-600');
+        dom.hours.classList.add('text-slate-800', 'dark:text-white');
+      }
+    }
+
+    // MAIN HIGH PRECISION TIMER TICKER
+    // requestAnimationFrame ensures matching with client refresh frequency, while performance.now() counters internal timing drift.
+    let animationFrameId = null;
+
+    function tick(timestamp) {
+      if (!state.isRunning) return;
+
+      const now = performance.now();
+      state.elapsedTime = now - state.startTime + state.pausedTime;
+      
+      updateDisplay(Math.floor(state.elapsedTime));
+      
+      animationFrameId = requestAnimationFrame(tick);
+    }
+
+    // ACTION: START
+    function startTimer() {
+      if (state.isRunning) return;
+
+      state.isRunning = true;
+      state.startTime = performance.now();
+      
+      // Update Control Elements
+      dom.playPauseText.innerText = 'Pause';
+      dom.playPauseIcon.setAttribute('data-lucide', 'pause');
+      dom.playPauseIcon.classList.remove('fill-white');
+      dom.statusLabel.innerText = 'Running';
+      dom.liveIndicator.classList.remove('hidden');
+      dom.activeIndicator.classList.add('opacity-100');
+      dom.lapBtn.removeAttribute('disabled');
+      dom.resetBtn.removeAttribute('disabled');
+
+      SoundEngine.play('start');
+      lucide.createIcons(); // Redraw status icon
+
+      animationFrameId = requestAnimationFrame(tick);
+      saveStateToLocalStorage();
+    }
+
+    // ACTION: PAUSE
+    function pauseTimer() {
+      if (!state.isRunning) return;
+
+      state.isRunning = false;
+      cancelAnimationFrame(animationFrameId);
+      
+      state.pausedTime = state.elapsedTime;
+
+      // Update UI Elements
+      dom.playPauseText.innerText = 'Resume';
+      dom.playPauseIcon.setAttribute('data-lucide', 'play');
+      dom.playPauseIcon.classList.add('fill-white');
+      dom.statusLabel.innerText = 'Paused';
+      dom.liveIndicator.classList.add('hidden');
+      dom.activeIndicator.classList.remove('opacity-100');
+
+      SoundEngine.play('pause');
+      lucide.createIcons();
+      saveStateToLocalStorage();
+    }
+
+    // ACTION: RESET
+    function resetTimer() {
+      state.isRunning = false;
+      cancelAnimationFrame(animationFrameId);
+      
+      state.elapsedTime = 0;
+      state.pausedTime = 0;
+      state.laps = [];
+
+      // Reset DOM State
+      updateDisplay(0);
+      dom.playPauseText.innerText = 'Start';
+      dom.playPauseIcon.setAttribute('data-lucide', 'play');
+      dom.playPauseIcon.classList.add('fill-white');
+      dom.statusLabel.innerText = 'Ready';
+      dom.liveIndicator.classList.add('hidden');
+      dom.activeIndicator.classList.remove('opacity-100');
+      
+      // Reset Lap Views
+      renderLaps();
+      dom.lapBtn.setAttribute('disabled', 'true');
+      dom.resetBtn.setAttribute('disabled', 'true');
+
+      SoundEngine.play('reset');
+      lucide.createIcons();
+      saveStateToLocalStorage();
+      showToast('Stopwatch successfully reset');
+    }
+
+    // ACTION: LAP
+    function recordLap() {
+      if (!state.isRunning && state.elapsedTime === 0) return;
+
+      const lapTimestamp = Math.floor(state.elapsedTime);
+      let lapDuration = lapTimestamp;
+      
+      // Calculate split relative duration
+      if (state.laps.length > 0) {
+        lapDuration = lapTimestamp - state.laps[0].totalTime;
+      }
+
+      const lapNumber = state.laps.length + 1;
+      const newLap = {
+        id: crypto.randomUUID(),
+        number: lapNumber,
+        duration: lapDuration,
+        totalTime: lapTimestamp,
+        date: new Date().toLocaleTimeString()
+      };
+
+      // Store at beginning of array to maintain "newest on top"
+      state.laps.unshift(newLap);
+
+      SoundEngine.play('lap');
+      renderLaps();
+      saveStateToLocalStorage();
+    }
+
+    // DRAW DYNAMIC LAPS & ANALYTICS
+    function renderLaps() {
+      const hasLaps = state.laps.length > 0;
+      dom.lapCount.innerText = state.laps.length;
+
+      if (!hasLaps) {
+        dom.lapsEmptyState.classList.remove('hidden');
+        dom.lapsContainer.classList.add('hidden');
+        dom.lapAnalysis.classList.add('hidden');
+        dom.exportBtn.setAttribute('disabled', 'true');
+        return;
+      }
+
+      dom.lapsEmptyState.classList.add('hidden');
+      dom.lapsContainer.classList.remove('hidden');
+      dom.exportBtn.removeAttribute('disabled');
+
+      // Detect Fast & Slow Laps (only if there are 2 or more laps to compare)
+      let fastestId = null;
+      let slowestId = null;
+
+      if (state.laps.length >= 2) {
+        let minTime = Infinity;
+        let maxTime = -Infinity;
+
+        state.laps.forEach(lap => {
+          if (lap.duration < minTime) {
+            minTime = lap.duration;
+            fastestId = lap.id;
+          }
+          if (lap.duration > maxTime) {
+            maxTime = lap.duration;
+            slowestId = lap.id;
+          }
+        });
+
+        dom.lapAnalysis.classList.remove('hidden');
+        
+        const fastLap = state.laps.find(l => l.id === fastestId);
+        const slowLap = state.laps.find(l => l.id === slowestId);
+        
+        const ft = formatTime(fastLap.duration);
+        const st = formatTime(slowLap.duration);
+        
+        dom.fastestLapText.innerText = `Lap ${fastLap.number} (${ft.minutes}:${ft.seconds}.${ft.milliseconds})`;
+        dom.slowestLapText.innerText = `Lap ${slowLap.number} (${st.minutes}:${st.seconds}.${st.milliseconds})`;
+      } else {
+        dom.lapAnalysis.classList.add('hidden');
+      }
+
+      // Generate HTML list
+      dom.lapsContainer.innerHTML = state.laps.map(lap => {
+        const dur = formatTime(lap.duration);
+        const tot = formatTime(lap.totalTime);
+        
+        let highlightClass = 'border-slate-200/60 dark:border-slate-800/60';
+        let badge = '';
+
+        if (lap.id === fastestId) {
+          highlightClass = 'border-emerald-500/40 bg-emerald-50/20 dark:bg-emerald-950/10';
+          badge = `<span class="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-bold">FASTEST</span>`;
+        } else if (lap.id === slowestId) {
+          highlightClass = 'border-rose-500/40 bg-rose-50/20 dark:bg-rose-950/10';
+          badge = `<span class="text-[10px] bg-rose-500/10 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded font-bold">SLOWEST</span>`;
+        }
+
+        return `
+          <div class="flex items-center justify-between p-3 rounded-xl border ${highlightClass} transition-all">
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-xs font-bold">
+                #${lap.number}
+              </span>
+              <div class="flex flex-col">
+                <span class="font-mono font-bold text-sm text-slate-800 dark:text-slate-100">
+                  ${dur.minutes}:${dur.seconds}.${dur.milliseconds}
+                </span>
+                <span class="text-[10px] text-slate-400 dark:text-slate-500">
+                  Split relative time
+                </span>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-1">
+              <span class="font-mono text-xs text-slate-500 dark:text-slate-400">
+                Total: ${tot.hours}:${tot.minutes}:${tot.seconds}.${tot.milliseconds}
+              </span>
+              ${badge}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ACTION: EXPORT CSV
+    function exportLapsToCSV() {
+      if (state.laps.length === 0) return;
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Lap Number,Duration (ms),Duration Formatted,Cumulative Time (ms),Cumulative Formatted\n";
+
+      state.laps.forEach(lap => {
+        const dur = formatTime(lap.duration);
+        const tot = formatTime(lap.totalTime);
+        const durStr = `${dur.hours}:${dur.minutes}:${dur.seconds}.${dur.milliseconds}`;
+        const totStr = `${tot.hours}:${tot.minutes}:${tot.seconds}.${tot.milliseconds}`;
+        
+        csvContent += `${lap.number},${lap.duration},"${durStr}",${lap.totalTime},"${totStr}"\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `stopwatch_laps_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Exported Laps as CSV file');
+    }
+
+    // TOAST FEEDBACK ALERT
+    function showToast(message) {
+      dom.toastMsg.innerText = message;
+      dom.toast.classList.remove('opacity-0', 'translate-y-20');
+      dom.toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        dom.toast.classList.remove('opacity-100', 'translate-y-0');
+        dom.toast.classList.add('opacity-0', 'translate-y-20');
+      }, 2500);
+    }
+
+    // THEME CONTROLLER
+    function initTheme() {
+      const isDark = localStorage.getItem('theme') !== 'light';
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+
+    // SOUND CONTROLLER
+    function toggleSound() {
+      state.soundEnabled = !state.soundEnabled;
+      localStorage.setItem('sound', state.soundEnabled);
+      updateSoundUI();
+    }
+
+    function updateSoundUI() {
+      if (state.soundEnabled) {
+        dom.soundIcon.setAttribute('data-lucide', 'volume-2');
+        dom.soundToggle.classList.add('text-indigo-600', 'dark:text-indigo-400');
+      } else {
+        dom.soundIcon.setAttribute('data-lucide', 'volume-x');
+        dom.soundToggle.classList.remove('text-indigo-600', 'dark:text-indigo-400');
+      }
+      lucide.createIcons();
+    }
+
+    // LOCAL STORAGE PERSISTENCE
+    function saveStateToLocalStorage() {
+      const payload = {
+        elapsedTime: state.elapsedTime,
+        pausedTime: state.pausedTime,
+        laps: state.laps,
+        isRunning: state.isRunning,
+        systemPausedAt: state.isRunning ? Date.now() : null
+      };
+      localStorage.setItem('stopwatch_state', JSON.stringify(payload));
+    }
+
+    function restoreStateFromLocalStorage() {
+      const raw = localStorage.getItem('stopwatch_state');
+      const soundPref = localStorage.getItem('sound');
+      
+      if (soundPref !== null) {
+        state.soundEnabled = soundPref === 'true';
+      }
+      updateSoundUI();
+
+      if (!raw) return;
+      
+      try {
+        const parsed = JSON.parse(raw);
+        state.laps = parsed.laps || [];
+        
+        if (parsed.isRunning && parsed.systemPausedAt) {
+          // Compensate for elapsed background closure/refresh drift
+          const timeGap = Date.now() - parsed.systemPausedAt;
+          state.pausedTime = parsed.elapsedTime + timeGap;
+          state.elapsedTime = state.pausedTime;
+          updateDisplay(Math.floor(state.elapsedTime));
+          renderLaps();
+          startTimer();
+        } else {
+          state.pausedTime = parsed.pausedTime || 0;
+          state.elapsedTime = parsed.elapsedTime || 0;
+          updateDisplay(Math.floor(state.elapsedTime));
+          renderLaps();
+          
+          if (state.elapsedTime > 0) {
+            dom.playPauseText.innerText = 'Resume';
+            dom.statusLabel.innerText = 'Paused';
+            dom.lapBtn.removeAttribute('disabled');
+            dom.resetBtn.removeAttribute('disabled');
+          }
+        }
+      } catch (e) {
+        console.error("Failed parsing state: ", e);
+      }
+    }
+
+    // KEYBOARD INPUT INTERACTION
+    window.addEventListener('keydown', (e) => {
+      // Discard commands if interactive text-inputs/modals have focus
+      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault(); // Stop default scroll
+        if (state.isRunning) {
+          pauseTimer();
+        } else {
+          startTimer();
+        }
+      } else if (key === 'l') {
+        e.preventDefault();
+        recordLap();
+      } else if (key === 'r') {
+        e.preventDefault();
+        resetTimer();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (!state.isRunning) startTimer();
+      }
+    });
+
+    // MASTER BUTTON CLICK
+    dom.startPauseBtn.addEventListener('click', () => {
+      if (state.isRunning) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    });
+
+    // EVENT LISTENERS REGISTER
+    dom.lapBtn.addEventListener('click', recordLap);
+    dom.resetBtn.addEventListener('click', resetTimer);
+    dom.exportBtn.addEventListener('click', exportLapsToCSV);
+    dom.themeToggle.addEventListener('click', toggleTheme);
+    dom.soundToggle.addEventListener('click', toggleSound);
+
+    // COPY TIME ON DOUBLE CLICKING TIME DISPLAY
+    dom.timeDisplay.addEventListener('dblclick', () => {
+      const time = formatTime(state.elapsedTime);
+      const textToCopy = `${time.hours}:${time.minutes}:${time.seconds}.${time.milliseconds}`;
+      
+      // Clipboard fallback matching restrictions
+      const el = document.createElement('textarea');
+      el.value = textToCopy;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+
+      showToast(`Copied ${textToCopy} to clipboard!`);
+    });
+
+    // MODAL DIALOGS CONTROL
+    dom.showKeysBtn.addEventListener('click', () => {
+      dom.shortcutsModal.classList.remove('opacity-0', 'pointer-events-none');
+      dom.shortcutsModal.firstElementChild.classList.remove('scale-95');
+      dom.shortcutsModal.firstElementChild.classList.add('scale-100');
+    });
+
+    function closeModal() {
+      dom.shortcutsModal.classList.add('opacity-0', 'pointer-events-none');
+      dom.shortcutsModal.firstElementChild.classList.add('scale-95');
+      dom.shortcutsModal.firstElementChild.classList.remove('scale-100');
+    }
+
+    dom.closeModalBtn.addEventListener('click', closeModal);
+    dom.shortcutsModal.addEventListener('click', (e) => {
+      if (e.target === dom.shortcutsModal) closeModal();
+    });
+
+    // APP INITIALIZATION
+    window.onload = function() {
+      lucide.createIcons();
+      initTheme();
+      restoreStateFromLocalStorage();
+    };
+  </script>
+</body>
+</html>
